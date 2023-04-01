@@ -19,6 +19,8 @@ class PixelArtPainter:
         self.outline_bool = True
         self.create_widgets()
         self.canvas.config(background="white")
+        self.background_png = 'white'
+        self.file_path = None
 
     def create_widgets(self):
         self.menu = tk.Menu(self.master)
@@ -64,14 +66,17 @@ class PixelArtPainter:
     def settings(self):
         settings_window = tk.Toplevel(self.master)
         settings_window.title("Settings")
+        settings_window.geometry("300x200")
 
         # canvas size
         canvas_size_frame = ttk.Frame(settings_window)
         canvas_size_label = ttk.Label(canvas_size_frame, text="Canvas size:")
         canvas_size_label.pack(side="left")
-        canvas_size_options = [("300x300", 300), ("500x500", 500), ("700x700", 700)]
+        canvas_size_options = [("300x300", 300), ("500x500", 500), ("700x700", 700), ("1200x600", 800)]
+        # get the current canvas size
         canvas_size_var = tk.StringVar(settings_window, f"{self.canvas_width}x{self.canvas_height}")
         canvas_size_menu = ttk.OptionMenu(canvas_size_frame, canvas_size_var, *canvas_size_options)
+
         canvas_size_menu.pack(side="left")
         canvas_size_frame.pack(pady=10)
 
@@ -85,14 +90,39 @@ class PixelArtPainter:
         pixel_size_menu.pack(side="left")
         pixel_size_frame.pack(pady=10)
 
-        # apply button
+
+        background_frame = ttk.Frame(settings_window)
+        self.background_color = tk.StringVar(value='white')
+        self.background_color_button = ttk.Radiobutton(background_frame, text="White", variable=self.background_color,
+                                                       value='white', command=self.change_background_color)
+        self.background_color_button.pack(side="left")
+        self.background_color_button = ttk.Radiobutton(background_frame, text="Black", variable=self.background_color,
+                                                       value='black', command=self.change_background_color)
+        self.background_color_button.pack(side="left")
+
+        self.background_color_button = ttk.Radiobutton(background_frame, text="Transparent",
+                                                       variable=self.background_color,
+                                                       value="transparent", command=self.change_background_color)
+        self.background_color_button.pack(side="left")
+        background_frame.pack(pady=10)
+
         apply_button = ttk.Button(settings_window, text="Apply",
                                   command=lambda: self.apply_settings(canvas_size_var.get(), pixel_size_var.get()))
+        # apply button
         apply_button.pack()
 
+    def change_background_color(self):
+        self.background_png = self.background_color.get()
+        if self.background_png == "transparent":
+            self.background_png = None
+            self.canvas.config(background="white")
+            return
+        self.canvas.config(background=self.background_png)
+
     def apply_settings(self, canvas_size, pixel_size):
-        size = int(canvas_size.replace(")", "").split(" ")[-1])
-        width, height = size, size
+        size = canvas_size.replace(")", "").replace("(", "").replace("'", "").replace(",", "").split(" ")[0].strip()
+        width, height = size.split("x")
+        width, height = int(width), int(height)
         self.canvas_width = width
         self.canvas_height = height
         self.canvas.config(width=self.canvas_width, height=self.canvas_height)
@@ -100,6 +130,8 @@ class PixelArtPainter:
         # update pixel size
         self.pixel_size = int(pixel_size.replace(")", "").split(" ")[-1])
         self.clear_canvas()
+        if self.file_path:
+            self.reload_project()
 
     def update_color_status(self):
         RGB = ImageColor.getcolor(self.color, "RGB")
@@ -198,29 +230,42 @@ class PixelArtPainter:
     
     def open_project(self):
         self.canvas.delete("all")
-        file_path = filedialog.askopenfilename(defaultextension=".pkl")
-        if file_path:
-            with open(file_path, "rb") as f:
+        self.file_path = filedialog.askopenfilename(defaultextension=".pkl")
+        if self.file_path:
+            with open(self.file_path, "rb") as f:
                 self.pixels = pickle.load(f)
             self.draw_pixels()
             if self.grid_bool:
                 self.draw_grid()
-    
+
+    def reload_project(self):
+        self.canvas.delete("all")
+        if self.file_path:
+            with open(self.file_path, "rb") as f:
+                self.pixels = pickle.load(f)
+            self.draw_pixels()
+            if self.grid_bool:
+                self.draw_grid()
+
+
     def save_image(self):
         file_path = filedialog.asksaveasfilename(defaultextension=".png")
         if file_path:
-            with Image.new("RGB", (self.canvas_width, self.canvas_height), "white") as image:
-                draw = ImageDraw.Draw(image)
-                
-                for item in self.canvas.find_all():
-                    fill = self.canvas.itemcget(item, "fill")
-                    if fill:
-                        x0, y0, x1, y1 = self.canvas.coords(item)
-                        if self.outline_bool:
-                            draw.rectangle((x0, y0, x1, y1), outline='black', fill=fill)
-                        else:
-                            draw.rectangle((x0, y0, x1, y1), fill=fill)
-                image.save(file_path)
+            if not self.background_png:
+                image = Image.new("RGBA", (self.canvas_width, self.canvas_height))
+            else:
+                image = Image.new("RGB", (self.canvas_width, self.canvas_height), self.background_png)
+            draw = ImageDraw.Draw(image)
+
+            for item in self.canvas.find_all():
+                fill = self.canvas.itemcget(item, "fill")
+                if fill:
+                    x0, y0, x1, y1 = self.canvas.coords(item)
+                    if self.outline_bool:
+                        draw.rectangle((x0, y0, x1, y1), outline='black', fill=fill)
+                    else:
+                        draw.rectangle((x0, y0, x1, y1), fill=fill)
+            image.save(file_path)
 
     def clear_canvas(self):
         self.canvas.delete("all")
