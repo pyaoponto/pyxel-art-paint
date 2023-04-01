@@ -72,7 +72,7 @@ class PixelArtPainter:
         canvas_size_frame = ttk.Frame(settings_window)
         canvas_size_label = ttk.Label(canvas_size_frame, text="Canvas size:")
         canvas_size_label.pack(side="left")
-        canvas_size_options = [("300x300", 300), ("500x500", 500), ("700x700", 700)]
+        canvas_size_options = [("300x300", 300), ("500x500", 500), ("700x700", 700), ("1200x600", 800)]
         # get the current canvas size
         canvas_size_var = tk.StringVar(settings_window, f"{self.canvas_width}x{self.canvas_height}")
         canvas_size_menu = ttk.OptionMenu(canvas_size_frame, canvas_size_var, *canvas_size_options)
@@ -90,10 +90,7 @@ class PixelArtPainter:
         pixel_size_menu.pack(side="left")
         pixel_size_frame.pack(pady=10)
 
-        # apply button
 
-
-        # Choose box background Color White or Transparent
         background_frame = ttk.Frame(settings_window)
         self.background_color = tk.StringVar(value='white')
         self.background_color_button = ttk.Radiobutton(background_frame, text="White", variable=self.background_color,
@@ -111,6 +108,7 @@ class PixelArtPainter:
 
         apply_button = ttk.Button(settings_window, text="Apply",
                                   command=lambda: self.apply_settings(canvas_size_var.get(), pixel_size_var.get()))
+        # apply button
         apply_button.pack()
 
     def change_background_color(self):
@@ -122,8 +120,9 @@ class PixelArtPainter:
         self.canvas.config(background=self.background_png)
 
     def apply_settings(self, canvas_size, pixel_size):
-        size = int(canvas_size.replace(")", "").split(" ")[-1])
-        width, height = size, size
+        size = canvas_size.replace(")", "").replace("(", "").replace("'", "").replace(",", "").split(" ")[0].strip()
+        width, height = size.split("x")
+        width, height = int(width), int(height)
         self.canvas_width = width
         self.canvas_height = height
         self.canvas.config(width=self.canvas_width, height=self.canvas_height)
